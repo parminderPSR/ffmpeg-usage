@@ -100,10 +100,10 @@ On start, the binary prints the binary name (`loudness`) on stdout, then process
 ### Syntax
 
 ```text
-loudness [-V | --verbose] <file.m4a|file.mp3|file.flac|file.wav|folder>
+loudness [-v | --verbose] <file.m4a|file.mp3|file.flac|file.wav|folder>
 ```
 
-- **`-V` / `--verbose`**: print the same table and progress lines to **stdout** as in the log.
+- **`-v` / `--verbose`**: print the same table and progress lines to **stdout** as in the log. (`-V` is reserved for **--version**.)
 - **`<path>`**: last non-flag argument is the input (file or directory).
 
 ### Examples — single file
@@ -126,9 +126,9 @@ cargo run --release -- ./tests/
 ### Examples — verbose
 
 ```bash
-cargo run --release -- -V ./song.wav
+cargo run --release -- -v ./song.wav
 cargo run --release -- --verbose ./song.wav
-./target/release/loudness -V ./song.wav
+./target/release/loudness -v ./song.wav
 ```
 
 ### Report columns

@@ -2,7 +2,7 @@
 
 fn main() {
     println!("loudness");
-    println!("  Usage: loudness [-V|--verbose] <file.m4a|folder>");
+    println!("  Usage: loudness [-v|--verbose] <file.m4a|folder>  (-V is --version)");
     println!("  Defaults: analyze EBU R128 via FFmpeg; write LOGS/ and a Markdown report.");
     println!();
     println!("normalize");

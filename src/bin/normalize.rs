@@ -196,9 +196,24 @@ fn default_normalized_path(input: impl AsRef<Path>) -> PathBuf {
     name = "normalize",
     version,
     about = "Loudness normalization (FFmpeg loudnorm)",
-    after_help = "Extra FFmpeg flags go after -- (applied before the output path), e.g.:\n  \
-                   normalize -i in.wav -o out.mp3 --single-pass -- -c:a libmp3lame -b:a 192k\n\
-                   When -i is a directory, -o is not allowed; each file becomes <stem>_normalized.<ext> beside it."
+    after_help = r#"Suggestions:
+  • ffmpeg must be on your PATH (this tool shells out to ffmpeg).
+  • Two-pass loudnorm is the default (better quality); use --single-pass for a quicker single pass.
+  • Omit -o to write <stem>_normalized.<ext> next to the input file (same folder).
+  • If -i is a directory, -o is not allowed; each supported file (m4a, mp3, flac, wav) is
+    normalized in place beside the source, non-recursive.
+  • Put a standalone `--` after normalize's own flags; everything after it is forwarded to
+    ffmpeg (after -af, before the output file)—e.g. encoder, bitrate, -ar 48000.
+
+Examples:
+  normalize -i music/song.wav
+  normalize -i music/song.wav -o /tmp/out.wav
+  normalize -i clip.m4a --single-pass
+  normalize -i in.wav -o out.mp3 --single-pass -- -c:a libmp3lame -b:a 192k
+  normalize -i in.flac -o out.wav -- -ar 48000
+  normalize -i ./album/ --single-pass
+  normalize -i track.wav -l -14 -t -1.0 --lra 11 --single-pass
+"#
 )]
 struct Args {
     /// Input audio file, or a directory containing m4a/mp3/flac/wav (non-recursive)

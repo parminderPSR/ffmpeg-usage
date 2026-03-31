@@ -3,28 +3,46 @@
 #[path = "../ffmpeg_tools.rs"]
 mod ffmpeg_tools;
 use chrono::Local;
+use clap::Parser;
 use std::fs::{self, File};
 use std::io::{self, BufWriter, Write};
 use std::path::Path;
 use std::process::Command;
 
-/// CLI entry: parse args, scan files, write logs and Markdown report. Exits the process on usage/ffmpeg errors.
-fn run() -> io::Result<()> {
-    let args: Vec<String> = std::env::args().collect();
-    let mut verbose = false;
-    let mut target = None;
-    for arg in &args[1..] {
-        if arg == "-V" || arg == "--verbose" {
-            verbose = true;
-        } else {
-            target = Some(arg.clone());
-        }
-    }
-    if target.is_none() {
-        eprintln!("Usage: loudness [-V|--verbose] <file.m4a|folder>");
-        std::process::exit(1);
-    }
-    let target = target.unwrap();
+#[derive(Parser, Debug)]
+#[command(
+    name = "loudness",
+    version,
+    about = "EBU R128 loudness measurement (FFmpeg ebur128); writes LOGS/ and a Markdown report.",
+    after_help = r#"Suggestions:
+  • ffmpeg must be on your PATH (this tool shells out to ffmpeg).
+  • Pass one audio file or one directory. Supported extensions: m4a, mp3, flac, wav (case-insensitive).
+  • A directory is scanned non-recursively: only files directly in that folder are analyzed.
+  • Use -v / --verbose to mirror the Markdown table and per-file metrics on stdout (-V is --version).
+  • Each run creates timestamped files under LOGS/: a .log and a *_loudness_report.md.
+
+Examples:
+  loudness music/track.wav
+  loudness -v podcast.m4a
+  loudness --verbose ~/Audio/inbox/
+  loudness ./tests/
+  cargo run --release -- ./album/
+"#
+)]
+struct Args {
+    /// Input audio file, or a directory containing m4a/mp3/flac/wav (non-recursive)
+    #[arg(value_name = "PATH")]
+    target: String,
+
+    /// Print the metrics table and per-file lines to stdout (same as in the log/report)
+    #[arg(short = 'v', long = "verbose")]
+    verbose: bool,
+}
+
+/// CLI entry: scan files, write logs and Markdown report. Exits the process on usage/ffmpeg errors.
+fn run(args: Args) -> io::Result<()> {
+    let target = args.target;
+    let verbose = args.verbose;
     let mut files = Vec::new();
     let path = Path::new(&target);
     if path.is_file() {
@@ -229,6 +247,7 @@ fn process_file(filepath: &str) -> io::Result<Vec<String>> {
 }
 
 fn main() -> std::io::Result<()> {
+    let cli = Args::parse();
     println!("{}", env!("CARGO_BIN_NAME"));
-    run()
+    run(cli)
 }
