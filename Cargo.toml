@@ -1,0 +1,24 @@
+[package]
+name = "loudness_check"
+version = "0.1.0"
+edition = "2021"
+default-run = "loudness"
+# Explicit binaries only (no src/bin/*.rs auto-discovery).
+autobins = false
+
+[[bin]]
+name = "loudness"
+path = "src/bin/loudness.rs"
+
+[[bin]]
+name = "normalize"
+path = "src/bin/normalize.rs"
+
+[[bin]]
+name = "ffmpeg-usage"
+path = "src/main.rs"
+
+[dependencies]
+chrono = "0.4.44"
+clap = { version = "4", features = ["derive"] }
+regex = "1"
