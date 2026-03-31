@@ -200,8 +200,8 @@ fn default_normalized_path(input: impl AsRef<Path>) -> PathBuf {
   • ffmpeg must be on your PATH (this tool shells out to ffmpeg).
   • Two-pass loudnorm is the default (better quality); use --single-pass for a quicker single pass.
   • Omit -o to write <stem>_normalized.<ext> next to the input file (same folder).
-  • If -i is a directory, -o is not allowed; each supported file (m4a, mp3, flac, wav) is
-    normalized in place beside the source, non-recursive.
+  • If -i is a directory, -o is not allowed; each supported file (m4a, mp3, flac, wav) under
+    that path—including nested folders—is normalized beside the source.
   • Put a standalone `--` after normalize's own flags; everything after it is forwarded to
     ffmpeg (after -af, before the output file)—e.g. encoder, bitrate, -ar 48000.
 
@@ -216,7 +216,7 @@ Examples:
 "#
 )]
 struct Args {
-    /// Input audio file, or a directory containing m4a/mp3/flac/wav (non-recursive)
+    /// Input audio file, or a directory tree (m4a/mp3/flac/wav; subfolders included)
     #[arg(short = 'i', long, required = true)]
     input: String,
 
@@ -308,10 +308,10 @@ fn main() -> io::Result<()> {
             );
             std::process::exit(1);
         }
-        let files = list_supported_audio_files_in_dir(input)?;
+        let files = list_supported_audio_files_in_dir(input, true)?;
         if files.is_empty() {
             eprintln!(
-                "normalize: no supported audio files (m4a, mp3, flac, wav) in {}",
+                "normalize: no supported audio files (m4a, mp3, flac, wav) under {}",
                 input.display()
             );
             std::process::exit(1);

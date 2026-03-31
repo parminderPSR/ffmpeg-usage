@@ -106,6 +106,64 @@ fn test_true_peak_extraction() {
     );
 }
 
+/// Nested directories only (no audio at the root): recursion must find files in subfolders.
+#[test]
+fn test_folder_input_recursive() {
+    let root = manifest_dir().join("target/loudness_recursive_fixture");
+    let _ = fs::remove_dir_all(&root);
+    fs::create_dir_all(root.join("nested/deep")).expect("mkdir nested");
+    let src = manifest_dir().join("tests/test.wav");
+    fs::copy(&src, root.join("nested/one.wav")).expect("copy nested wav");
+    fs::copy(&src, root.join("nested/deep/two.wav")).expect("copy deep wav");
+
+    let status = Command::new("cargo")
+        .current_dir(manifest_dir())
+        .args([
+            "run",
+            "--bin",
+            "loudness",
+            "--",
+            root.to_str().expect("utf8 path"),
+        ])
+        .status()
+        .expect("cargo run loudness recursive");
+    assert!(
+        status.success(),
+        "loudness should exit 0 for nested-only folder"
+    );
+
+    // Pick the log from this run (do not assume newest *.md — parallel tests also write LOGS/).
+    let logs_dir = manifest_dir().join("LOGS");
+    let mut log_files: Vec<_> = fs::read_dir(&logs_dir)
+        .expect("LOGS")
+        .filter_map(|e| e.ok())
+        .filter(|e| e.path().extension().is_some_and(|x| x == "log"))
+        .collect();
+    log_files.sort_by_key(|e| e.metadata().ok().and_then(|m| m.modified().ok()));
+    log_files.reverse();
+
+    let log_for_run = log_files
+        .into_iter()
+        .map(|e| fs::read_to_string(e.path()).expect("read log"))
+        .find(|s| {
+            s.contains("loudness_recursive_fixture")
+                && s.lines().any(|l| l.starts_with("target:"))
+        })
+        .expect("log for recursive fixture run");
+
+    assert!(
+        log_for_run.contains("file_count: 2"),
+        "expected two nested wav files; log excerpt:\n{}",
+        log_for_run
+            .lines()
+            .take(12)
+            .collect::<Vec<_>>()
+            .join("\n")
+    );
+
+    let _ = fs::remove_dir_all(&root);
+}
+
 // --- normalize CLI (ffmpeg) ---
 
 fn assert_normalize_single_pass_output(input_rel: &str, target_output_rel: &str) {
@@ -162,7 +220,7 @@ fn normalize_cli_accepts_one_input_file() {
     assert_normalize_single_pass_output("tests/test.wav", "normalize_one_file_out.wav");
 }
 
-/// `-i` pointing at a directory: every m4a/mp3/flac/wav in that directory (non-recursive) is normalized beside the source.
+/// `-i` pointing at a directory: every m4a/mp3/flac/wav in that directory is normalized beside the source.
 #[test]
 fn normalize_cli_accepts_folder_input() {
     let root = manifest_dir().join("target/normalize_folder_batch_test");
@@ -199,6 +257,59 @@ fn normalize_cli_accepts_folder_input() {
     assert!(
         fs::metadata(&expected_out).map(|m| m.len() > 0).unwrap_or(false),
         "batch output empty"
+    );
+    let _ = fs::remove_dir_all(&root);
+}
+
+/// Nested folders only: batch must find wav files in subdirs and write outputs beside each source.
+#[test]
+fn normalize_cli_accepts_folder_input_recursive() {
+    let root = manifest_dir().join("target/normalize_recursive_fixture");
+    let _ = fs::remove_dir_all(&root);
+    fs::create_dir_all(root.join("nested/deep")).expect("mkdir nested");
+    let src = manifest_dir().join("tests/test.wav");
+    fs::copy(&src, root.join("nested/one.wav")).expect("copy nested wav");
+    fs::copy(&src, root.join("nested/deep/two.wav")).expect("copy deep wav");
+
+    let out_one = root.join("nested/one_normalized.wav");
+    let out_two = root.join("nested/deep/two_normalized.wav");
+    let _ = fs::remove_file(&out_one);
+    let _ = fs::remove_file(&out_two);
+
+    let status = Command::new("cargo")
+        .current_dir(manifest_dir())
+        .args([
+            "run",
+            "--bin",
+            "normalize",
+            "--",
+            "-i",
+            root.to_str().expect("utf8"),
+            "--single-pass",
+        ])
+        .status()
+        .expect("cargo run normalize recursive folder");
+    assert!(
+        status.success(),
+        "normalize batch recursive folder should exit 0"
+    );
+    assert!(
+        out_one.is_file(),
+        "expected {:?} beside nested input",
+        out_one
+    );
+    assert!(
+        out_two.is_file(),
+        "expected {:?} beside deep input",
+        out_two
+    );
+    assert!(
+        fs::metadata(&out_one).map(|m| m.len() > 0).unwrap_or(false),
+        "nested output empty"
+    );
+    assert!(
+        fs::metadata(&out_two).map(|m| m.len() > 0).unwrap_or(false),
+        "deep output empty"
     );
     let _ = fs::remove_dir_all(&root);
 }

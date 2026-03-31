@@ -17,7 +17,7 @@ use std::process::Command;
     after_help = r#"Suggestions:
   • ffmpeg must be on your PATH (this tool shells out to ffmpeg).
   • Pass one audio file or one directory. Supported extensions: m4a, mp3, flac, wav (case-insensitive).
-  • A directory is scanned non-recursively: only files directly in that folder are analyzed.
+  • A directory is scanned recursively: all nested folders are searched for supported audio files.
   • Use -v / --verbose to mirror the Markdown table and per-file metrics on stdout (-V is --version).
   • Each run creates timestamped files under LOGS/: a .log and a *_loudness_report.md.
 
@@ -30,7 +30,7 @@ Examples:
 "#
 )]
 struct Args {
-    /// Input audio file, or a directory containing m4a/mp3/flac/wav (non-recursive)
+    /// Input audio file, or a directory tree (m4a/mp3/flac/wav; subfolders included)
     #[arg(value_name = "PATH")]
     target: String,
 
@@ -52,7 +52,7 @@ fn run(args: Args) -> io::Result<()> {
             }
         }
     } else if path.is_dir() {
-        files = ffmpeg_tools::list_supported_audio_files_in_dir(path)?
+        files = ffmpeg_tools::list_supported_audio_files_in_dir(path, true)?
             .into_iter()
             .map(|p| p.to_string_lossy().to_string())
             .collect();

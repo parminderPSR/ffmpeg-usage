@@ -92,7 +92,7 @@ normalize <args>
 
 ## `loudness` — measure loudness
 
-Scans **one audio file** or **one directory** (non-recursive: only files directly in that folder).  
+Scans **one audio file** or **one directory** (recursively: all supported files under that path, including nested folders).  
 Supported extensions: **`m4a`**, **`mp3`**, **`flac`**, **`wav`** (case-insensitive).
 
 On start, the binary prints the binary name (`loudness`) on stdout, then processes files.
@@ -151,6 +151,8 @@ Uses FFmpeg **`loudnorm`**. **Two-pass** is the default (analyze, then encode); 
 Default **output** if you omit **`-o` / `--output`**: same directory as the input, file name **`<stem>_normalized.<ext>`**  
 (e.g. `music/song.wav` → `music/song_normalized.wav`).
 
+If **`-i`** is a **directory**, **`-o`** is not allowed: every supported file (**m4a**, **mp3**, **flac**, **wav**) under that path—including **nested subfolders**—is normalized, with outputs written **next to each source file**.
+
 ### Syntax (`normalize --help`)
 
 ```text
@@ -159,7 +161,7 @@ normalize -i <INPUT> [-o <OUTPUT>] [-l LUFS] [-t TP] [--lra LRA] [--single-pass]
 
 | Option | Meaning | Default |
 |--------|---------|---------|
-| `-i`, `--input` | Input file (required) | — |
+| `-i`, `--input` | Input **file** or **directory** (directory scan is **recursive**) | — |
 | `-o`, `--output` | Output file | `<stem>_normalized.<ext>` next to input |
 | `-l`, `--lufs` | Target integrated loudness (LUFS) | `-16` |
 | `-t`, `--tp` | Target true peak (dBFS) | `-1.5` |
@@ -282,14 +284,15 @@ cargo test --test integration test_single_file_m4a
 
 ### Integration tests
 
-File: **`tests/integration.rs`** (12 tests).
+File: **`tests/integration.rs`** (14 tests).
 
 **`loudness` (default `cargo run`)** — uses `tests/test.*` fixtures and sometimes `tests/` as a folder:
 
 | Test | What it checks |
 |------|----------------|
 | `test_single_file_m4a` / `mp3` / `flac` | Single-file path for each supported extension exits successfully. |
-| `test_folder_input` | Directory argument processes non-recursive contents. |
+| `test_folder_input` | Directory argument processes supported files (recursively under that path). |
+| `test_folder_input_recursive` | Temp tree with **only nested** wav files (no audio at root); log must show `file_count: 2`. |
 | `test_log_file_created` | A run creates **`LOGS/`** with at least one file. |
 | `test_true_peak_extraction` | Markdown report contains a **TP (dBFS)** column with a non-`N/A` value. |
 
@@ -301,6 +304,7 @@ File: **`tests/integration.rs`** (12 tests).
 | `normalize_cli_single_pass_mp3_input` / `m4a_input` | Compressed inputs → **WAV** under `target/` (avoids flaky re-encode to MP3/AAC). |
 | `normalize_cli_accepts_one_input_file` | Explicit `-o` path works. |
 | `normalize_cli_accepts_folder_input` | `-i` is a directory; batch writes `<stem>_normalized.<ext>` beside sources. |
+| `normalize_cli_accepts_folder_input_recursive` | Temp tree with **only nested** inputs; expects `one_normalized.wav` and `deep/two_normalized.wav`. |
 | `normalize_cli_single_pass_default_output_path` | Omitting `-o` writes `tests/test_normalized.wav` next to the input. |
 
 ### Unit tests
